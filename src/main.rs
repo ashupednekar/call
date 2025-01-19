@@ -1,5 +1,6 @@
 mod pkg;
 mod cmd;
+pub mod conf;
 mod prelude;
 
 use crate::prelude::Result;
@@ -12,6 +13,7 @@ async fn main() -> Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    cmd::run().await?;
 
     Ok(())
 }

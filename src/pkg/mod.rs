@@ -1,1 +1,1 @@
-mod handlers;
+mod server;
