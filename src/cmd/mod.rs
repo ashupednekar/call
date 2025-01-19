@@ -2,7 +2,7 @@ pub mod api;
 pub mod app;
 pub mod cli;
 
-use crate::prelude::Result;
+use crate::{pkg::server::serve::listen, prelude::Result};
 use clap::{Parser, Subcommand};
 
 
@@ -15,8 +15,7 @@ struct Cmd{
 
 #[derive(Subcommand)]
 enum SubcommandType{
-    App,
-    Api,
+    Listen,
     Cli
 }
 
@@ -24,11 +23,8 @@ pub async fn run() -> Result<()>{
     let args = Cmd::parse();
 
     match args.command{
-        Some(SubcommandType::App) => {
-            
-        }
-        Some(SubcommandType::Api) => {
-
+        Some(SubcommandType::Listen) => {
+            listen().await?;
         }
         Some(SubcommandType::Cli) => {
 
