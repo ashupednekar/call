@@ -3,7 +3,7 @@ use tokio::sync::broadcast::Sender;
 use crate::prelude::Result;
 
 mod nats;
-mod channels;
+mod inmemory;
 
 #[derive(Debug, Clone)]
 pub struct Message{
