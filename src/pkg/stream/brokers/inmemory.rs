@@ -9,13 +9,13 @@ use super::{Broker, Message};
 type Map = Arc<Mutex<HashMap<String, (Sender<Message>, Receiver<Message>)>>>;
 
 
-struct InMemoryPubSub{
+pub struct InMemoryPubSub{
     map: Map
 }
 
 impl InMemoryPubSub{
-    fn new() -> Self{
-        Self{map: Arc::new(Mutex::new(HashMap::new()))}
+    pub async fn new() -> Result<Self>{
+        Ok(Self{map: Arc::new(Mutex::new(HashMap::new()))})
     }
 }
 
@@ -33,12 +33,13 @@ impl Broker for InMemoryPubSub{
         Ok(())
     }
 
-    async fn consume(&self, subject: &str, ch: Sender<Message>) -> Result<()>{
+    async fn consume(&self, subject: &str, ch: Arc<Mutex<Sender<Message>>>) -> Result<()>{
         let mut map = self.map.lock().await;
         let (_, ref mut rx) = map.entry(subject.to_string()).or_insert_with(||{
             let (tx, rx) = broadcast::channel(16);
             (tx, rx)
         });
+        let ch = ch.lock().await;
         while let Ok(msg) = rx.recv().await{
             ch.send(msg)?;
         }; 
@@ -56,7 +57,7 @@ mod tests{
 
     #[tokio::test]
     async fn test_pubsub() -> Result<()>{ 
-        let broker = InMemoryPubSub::new();
+        let broker = InMemoryPubSub::new().await?;
 
         async fn do_produce<T: Broker>(broker: &T) -> Result<()>{
             for i in 1..100{
@@ -69,7 +70,7 @@ mod tests{
 
         tokio::select! {
             _ = do_produce(&broker) => {},
-            _ = broker.consume("foo.bar", tx) => {}
+            _ = broker.consume("foo.bar", Arc::new(Mutex::new(tx))) => {}
         }
 
         while let Ok(msg) = rx.recv().await{
