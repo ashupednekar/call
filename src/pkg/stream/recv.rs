@@ -1,15 +1,23 @@
 use std::sync::Arc;
 
-use tokio::sync::{Mutex, broadcast};
+use tokio::sync::{Mutex, broadcast::{self, Receiver}};
 
 use crate::prelude::Result;
-use super::brokers::Broker;
+use super::brokers::{Broker, Message};
+
+pub async fn read_consumer_ch(mut ch: Receiver<Message>){
+    while let Ok(msg) = ch.recv().await{
+
+    }
+}
 
 
-pub async fn receive_broker_messages<T: Broker + Send>(broker: T, user: &str) -> Result<()> {
-    let (tx, mut rx) = broadcast::channel(16);
-    let tx = Arc::new(Mutex::new(tx));
-    let fut = broker.consume(&format!("ws.recv.{}", &user), tx);
-    tokio::spawn(fut);
+pub async fn receive_broker_messages<T: Broker>(broker: T, user: &str) -> Result<()> {
+    let (tx, rx) = broadcast::channel(16);
+    let subject = &format!("ws.recv.{}", &user);
+    tokio::select! {
+        _ = broker.consume(subject, tx) => {},
+        _ = read_consumer_ch(rx) => {} 
+    }
     Ok(())
 }

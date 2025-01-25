@@ -33,13 +33,12 @@ impl Broker for InMemoryPubSub{
         Ok(())
     }
 
-    async fn consume(&self, subject: &str, ch: Arc<Mutex<Sender<Message>>>) -> Result<()>{
+    async fn consume(&self, subject: &str, ch: Sender<Message>) -> Result<()>{
         let mut map = self.map.lock().await;
         let (_, ref mut rx) = map.entry(subject.to_string()).or_insert_with(||{
             let (tx, rx) = broadcast::channel(16);
             (tx, rx)
         });
-        let ch = ch.lock().await;
         while let Ok(msg) = rx.recv().await{
             ch.send(msg)?;
         }; 
@@ -70,7 +69,7 @@ mod tests{
 
         tokio::select! {
             _ = do_produce(&broker) => {},
-            _ = broker.consume("foo.bar", Arc::new(Mutex::new(tx))) => {}
+            _ = broker.consume("foo.bar", tx) => {}
         }
 
         while let Ok(msg) = rx.recv().await{

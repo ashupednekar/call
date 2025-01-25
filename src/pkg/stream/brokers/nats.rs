@@ -1,10 +1,8 @@
-use std::sync::Arc;
-
 use async_nats::Client;
 use async_trait::async_trait;
 use serde::Deserialize;
 use tokio_stream::StreamExt;
-use tokio::sync::{Mutex,broadcast::Sender};
+use tokio::sync::broadcast::Sender;
 use crate::prelude::Result;
 use config::{Config, Environment, ConfigError};
 
@@ -46,10 +44,9 @@ impl Broker for NatsPubSub{
         Ok(())
     }
 
-    async fn consume(&self, subject: &str, ch: Arc<Mutex<Sender<Message>>>) -> Result<()>{
+    async fn consume(&self, subject: &str, ch: Sender<Message>) -> Result<()>{
         let mut subscriber = self.client.subscribe(subject.to_string())
             .await?;
-        let ch = ch.lock().await;
         while let Some(msg) = subscriber.next().await{
             ch.send(Message{
                 subject: subject.to_string(),
@@ -82,7 +79,7 @@ mod tests{
 
         tokio::select! {
             _ = do_produce(&broker) => {},
-            _ = broker.consume("foo.bar", Arc::new(Mutex::new(tx))) => {}
+            _ = broker.consume("foo.bar", tx) => {}
         }
 
         while let Ok(msg) = rx.recv().await{

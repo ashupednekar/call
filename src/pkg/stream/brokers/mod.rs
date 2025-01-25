@@ -1,7 +1,5 @@
-use std::sync::Arc;
-
 use async_trait::async_trait;
-use tokio::sync::{Mutex, broadcast::Sender};
+use tokio::sync::broadcast::Sender;
 use crate::{conf::{settings, Brokers}, prelude::Result};
 
 mod nats;
@@ -19,7 +17,7 @@ pub struct Message{
 #[async_trait]
 pub trait Broker{
     async fn produce(&self, subject: &str, data: Vec<u8>) -> Result<()>;
-    async fn consume(&self, subject: &str, ch: Arc<Mutex<Sender<Message>>>) -> Result<()>;
+    async fn consume(&self, subject: &str, ch: Sender<Message>) -> Result<()>;
 }
 
 async fn new_broker<T>() -> Result<Box<dyn Broker>> {
