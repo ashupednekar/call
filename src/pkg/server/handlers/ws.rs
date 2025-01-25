@@ -1,6 +1,5 @@
 use futures::{SinkExt, StreamExt};
-use async_nats::HeaderMap;
-use axum::{extract::ws::{WebSocket, WebSocketUpgrade}, response::IntoResponse};
+use axum::{extract::ws::{WebSocket, WebSocketUpgrade}, http::HeaderMap, response::IntoResponse};
 
 
 pub async fn handle_ws(
