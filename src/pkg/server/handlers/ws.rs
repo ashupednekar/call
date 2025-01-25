@@ -13,7 +13,7 @@ pub async fn handle_ws(
 async fn handle_connection(
     stream: WebSocket
 ){
-    let (mut sender, receiver) = stream.split();
+    let (mut sender, _receiver) = stream.split();
     if sender.send("ws conected".into()).await.is_err(){
         tracing::error!("couldn't send to client");
     }; 
