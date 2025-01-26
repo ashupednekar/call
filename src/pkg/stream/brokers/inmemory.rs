@@ -9,13 +9,13 @@ use super::{Broker, Message};
 type Map = Arc<Mutex<HashMap<String, (Sender<Message>, Receiver<Message>)>>>;
 
 
-struct InMemoryPubSub{
+pub struct InMemoryPubSub{
     map: Map
 }
 
 impl InMemoryPubSub{
-    fn new() -> Self{
-        Self{map: Arc::new(Mutex::new(HashMap::new()))}
+    pub async fn new() -> Result<Self>{
+        Ok(Self{map: Arc::new(Mutex::new(HashMap::new()))})
     }
 }
 
@@ -24,7 +24,12 @@ impl Broker for InMemoryPubSub{
 
 
     async fn produce(&self, subject: &str, data: Vec<u8>) -> Result<()>{
+        unimplemented!();
+        // can't have a long acuired mutex in consumer, will cause producer to not work once
+        // consumer starts
+        tracing::debug!("producing to {}", &subject);
         let mut map = self.map.lock().await;
+        tracing::debug!("map: {:?}", &map);
         let (tx, _) = map.entry(subject.to_string()).or_insert_with(||{
             let (tx, rx) = broadcast::channel(16);
             (tx, rx)
@@ -56,7 +61,7 @@ mod tests{
 
     #[tokio::test]
     async fn test_pubsub() -> Result<()>{ 
-        let broker = InMemoryPubSub::new();
+        let broker = InMemoryPubSub::new().await?;
 
         async fn do_produce<T: Broker>(broker: &T) -> Result<()>{
             for i in 1..100{

@@ -2,8 +2,9 @@ use async_trait::async_trait;
 use tokio::sync::broadcast::Sender;
 use crate::prelude::Result;
 
-mod nats;
-mod inmemory;
+pub mod nats;
+pub mod inmemory;
+
 
 #[derive(Debug, Clone)]
 pub struct Message{
@@ -16,3 +17,4 @@ pub trait Broker{
     async fn produce(&self, subject: &str, data: Vec<u8>) -> Result<()>;
     async fn consume(&self, subject: &str, ch: Sender<Message>) -> Result<()>;
 }
+
