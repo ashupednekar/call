@@ -45,9 +45,11 @@ impl Broker for NatsPubSub{
     }
 
     async fn consume(&self, subject: &str, ch: Sender<Message>) -> Result<()>{
+        tracing::debug!("subscribing at: {}", &subject);
         let mut subscriber = self.client.subscribe(subject.to_string())
             .await?;
         while let Some(msg) = subscriber.next().await{
+            tracing::debug!("got msg from broker: {:?}", &msg);
             ch.send(Message{
                 subject: subject.to_string(),
                 data: msg.payload.to_vec()

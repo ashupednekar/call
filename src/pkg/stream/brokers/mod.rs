@@ -1,12 +1,10 @@
 use async_trait::async_trait;
 use tokio::sync::broadcast::Sender;
-use crate::{conf::{settings, Brokers}, prelude::Result};
+use crate::prelude::Result;
 
-mod nats;
-mod inmemory;
+pub mod nats;
+pub mod inmemory;
 
-use nats::NatsPubSub;
-use inmemory::InMemoryPubSub;
 
 #[derive(Debug, Clone)]
 pub struct Message{
@@ -20,15 +18,3 @@ pub trait Broker{
     async fn consume(&self, subject: &str, ch: Sender<Message>) -> Result<()>;
 }
 
-async fn new_broker<T>() -> Result<Box<dyn Broker>> {
-    match settings.broker{
-        Brokers::Nats => { 
-            let broker: NatsPubSub = NatsPubSub::new().await?;
-            Ok(Box::new(broker))
-        },
-        Brokers::InMemory => { 
-            let broker: InMemoryPubSub = InMemoryPubSub::new().await?;
-            Ok(Box::new(broker))
-        },
-    }
-}
