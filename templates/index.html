@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        let websocket;
+        let mediaStream;
+
+        function goToStep2() {
+            const name = document.getElementById('yourName').value;
+            if (!name) {
+                alert('Please enter your name!');
+                return;
+            }
+            document.getElementById('step1').classList.add('hidden');
+            document.getElementById('step2').classList.remove('hidden');
+        }
+
+        function startCall() {
+            const from = document.getElementById('yourName').value;
+            const to = document.getElementById('toName').value;
+
+            // Ensure 'to' field is provided
+            if (!to) {
+                alert('Please enter the recipient\'s name!');
+                return;
+            }
+
+            const wsUrl = `ws://localhost:3000/ws/${from}/${to}/`;
+            websocket = new WebSocket(wsUrl);
+
+            websocket.onopen = () => {
+                document.getElementById('step2').classList.add('hidden');
+                document.getElementById('videoSection').classList.remove('hidden');
+                startVideoStream();
+            };
+
+            websocket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                alert('Failed to connect to the server.');
+            };
+
+            websocket.onclose = () => {
+                // Close the video stream and other cleanup
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(track => track.stop());
+                    document.getElementById('videoContainer').innerHTML = '';
+                }
+                document.getElementById('videoSection').classList.add('hidden');
+                document.getElementById('step2').classList.remove('hidden');
+            };
+        }
+
+        async function startVideoStream() {
+            try {
+                // Access user's webcam and microphone
+                mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                const videoElement = document.createElement('video');
+                videoElement.srcObject = mediaStream;
+                videoElement.play();
+                videoElement.classList.add('w-full', 'h-full', 'object-cover');  // Make the video fill the box
+
+                // Append the video element to the video section container
+                document.getElementById('videoContainer').appendChild(videoElement);
+
+                // Stream the media data to WebSocket
+                streamVideo();
+
+                // Add video call controls
+                addVideoCallControls();
+            } catch (error) {
+                console.error('Error accessing media devices:', error);
+                alert('Could not access webcam or microphone.');
+            }
+        }
+
+        function streamVideo() {
+            if (!websocket || websocket.readyState !== WebSocket.OPEN || !mediaStream) return;
+
+            const videoTrack = mediaStream.getVideoTracks()[0];
+            const audioTrack = mediaStream.getAudioTracks()[0];
+            
+            // Send media data via WebSocket (simulation, in reality, you'd use a proper video streaming protocol)
+            setInterval(() => {
+                if (videoTrack.readyState === 'live') {
+                    // Dummy data to simulate video bytes
+                    const videoBytes = new Uint8Array([Math.random() * 255]);
+                    websocket.send(videoBytes);
+                }
+                if (audioTrack.readyState === 'live') {
+                    // Dummy data to simulate audio bytes
+                    const audioBytes = new Uint8Array([Math.random() * 255]);
+                    websocket.send(audioBytes);
+                }
+            }, 100);
+        }
+
+        function addVideoCallControls() {
+            const videoContainer = document.getElementById('videoContainer');
+            const controlsContainer = document.createElement('div');
+            controlsContainer.classList.add('absolute', 'bottom-4', 'left-4', 'flex', 'space-x-4');
+
+            // Mute/Unmute button
+            const muteButton = document.createElement('button');
+            muteButton.classList.add('bg-gray-800', 'hover:bg-gray-700', 'text-white', 'px-4', 'py-2', 'rounded-lg');
+            muteButton.textContent = 'Mute';
+            muteButton.onclick = () => {
+                const audioTracks = mediaStream.getAudioTracks();
+                audioTracks.forEach(track => track.enabled = !track.enabled);
+                muteButton.textContent = audioTracks[0].enabled ? 'Mute' : 'Unmute';
+            };
+            controlsContainer.appendChild(muteButton);
+
+            // End Call button
+            const endCallButton = document.createElement('button');
+            endCallButton.classList.add('bg-red-600', 'hover:bg-red-700', 'text-white', 'px-4', 'py-2', 'rounded-lg');
+            endCallButton.textContent = 'End Call';
+            endCallButton.onclick = () => {
+                if (websocket) {
+                    websocket.close();
+                }
+            };
+            controlsContainer.appendChild(endCallButton);
+
+            videoContainer.appendChild(controlsContainer);
+        }
+    </script>
+
+    <title>Video Call</title>
+</head>
+<body class="bg-gray-900 text-white font-sans">
+    <div class="min-h-screen flex flex-col items-center justify-center space-y-6">
+        <!-- Step 1: Enter Your Name -->
+        <div id="step1" class="space-y-4">
+            <h1 class="text-3xl font-bold">Enter Your Name</h1>
+            <input id="yourName" 
+                   type="text" 
+                   placeholder="Your Name" 
+                   class="block w-80 px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <button 
+                onclick="goToStep2()" 
+                class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg font-medium transition">Start</button>
+        </div>
+
+        <!-- Step 2: Start a Call -->
+        <div id="step2" class="hidden space-y-4">
+            <h1 class="text-3xl font-bold">Start a Call</h1>
+            <input id="toName" 
+                   type="text" 
+                   placeholder="Recipient's Name" 
+                   class="block w-80 px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <button 
+                onclick="startCall()" 
+                class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg font-medium transition">Start Call</button>
+        </div>
+
+        <!-- Video Section -->
+        <div id="videoSection" class="hidden">
+            <h1 class="text-3xl font-bold mb-4">Video Call in Progress</h1>
+            <div id="videoContainer" class="bg-gray-800 rounded-lg p-6 w-96 h-64 flex items-center justify-center relative">
+                <p class="text-gray-400">Streaming video...</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
