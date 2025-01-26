@@ -8,15 +8,16 @@ use super::brokers::Broker;
 pub async fn receive_client_messages<T: Broker>(
     mut receiver: SplitStream<WebSocket>,
     broker: &T,
-    user: &str
+    from: &str,
+    to: &str
 ) -> Result<()>{
-    let subject = format!("ws.send.{}", &user);
+    let subject = format!("ws.{}.{}", &to, &from);
     while let Some(Ok(msg)) = receiver.next().await{
         if let Message::Close(_) = msg{
             break; 
         }else{
             tracing::debug!("got msg from client: {:?}", &msg);
-            broker.produce(&subject, msg.into()).await.unwrap();
+            broker.produce(&subject, msg.into()).await?;
         }
     }
     Ok(())

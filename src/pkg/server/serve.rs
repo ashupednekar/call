@@ -10,7 +10,7 @@ pub async fn listen() -> Result<()> {
             .await
             .unwrap();
     let router = Router::new()
-        .route("/ws/", get(handle_ws))
+        .route("/ws/{from}/{to}/", get(handle_ws))
         .route("/livez/", get(livez));
     tracing::info!("listening at :{}", &settings.listen_port);
     axum::serve(listener, router)

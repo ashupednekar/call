@@ -20,10 +20,11 @@ pub async fn read_consumer_ch(
 pub async fn receive_broker_messages<T: Broker>(
     sender: SplitSink<WebSocket, Message>,
     broker: &T, 
-    user: &str
+    from: &str,
+    to: &str
 ) -> Result<()> {
     let (tx, rx) = broadcast::channel(16);
-    let subject = &format!("ws.recv.{}", &user);
+    let subject = &format!("ws.{}.{}", &from, &to);
     tokio::select! {
         _ = broker.consume(subject, tx) => {},
         _ = read_consumer_ch(sender, rx) => {} 

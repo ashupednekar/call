@@ -39,6 +39,7 @@ impl NatsPubSub{
 #[async_trait]
 impl Broker for NatsPubSub{
     async fn produce(&self, subject: &str, data: Vec<u8>) -> Result<()>{
+        tracing::debug!("producing to: {}", &subject);
         self.client.publish(subject.to_string(), data.into())
             .await?; 
         Ok(())
