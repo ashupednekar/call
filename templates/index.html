@@ -7,6 +7,7 @@
     <script>
         let websocket;
         let mediaStream;
+        let localVideo, remoteVideo;
 
         function goToStep2() {
             const name = document.getElementById('yourName').value;
@@ -22,7 +23,6 @@
             const from = document.getElementById('yourName').value;
             const to = document.getElementById('toName').value;
 
-            // Ensure 'to' field is provided
             if (!to) {
                 alert('Please enter the recipient\'s name!');
                 return;
@@ -43,11 +43,7 @@
             };
 
             websocket.onclose = () => {
-                // Close the video stream and other cleanup
-                if (mediaStream) {
-                    mediaStream.getTracks().forEach(track => track.stop());
-                    document.getElementById('videoContainer').innerHTML = '';
-                }
+                stopVideoStream();
                 document.getElementById('videoSection').classList.add('hidden');
                 document.getElementById('step2').classList.remove('hidden');
             };
@@ -55,80 +51,118 @@
 
         async function startVideoStream() {
             try {
-                // Access user's webcam and microphone
                 mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                const videoElement = document.createElement('video');
-                videoElement.srcObject = mediaStream;
-                videoElement.play();
-                videoElement.classList.add('w-full', 'h-full', 'object-cover');  // Make the video fill the box
+                localVideo = document.createElement('video');
+                localVideo.srcObject = mediaStream;
+                localVideo.play();
+                localVideo.classList.add('w-full', 'h-full', 'object-cover');
 
-                // Append the video element to the video section container
-                document.getElementById('videoContainer').appendChild(videoElement);
+                remoteVideo = document.createElement('video');
+                remoteVideo.classList.add('w-full', 'h-full', 'object-cover');
 
-                // Stream the media data to WebSocket
-                streamVideo();
+                document.getElementById('localVideoContainer').appendChild(localVideo);
+                document.getElementById('remoteVideoContainer').appendChild(remoteVideo);
 
-                // Add video call controls
-                addVideoCallControls();
+                streamVideo(localVideo, remoteVideo);
+                addCallControls();
             } catch (error) {
                 console.error('Error accessing media devices:', error);
                 alert('Could not access webcam or microphone.');
             }
         }
 
-        function streamVideo() {
+        function streamVideo(localVideo, remoteVideo) {
             if (!websocket || websocket.readyState !== WebSocket.OPEN || !mediaStream) return;
 
             const videoTrack = mediaStream.getVideoTracks()[0];
             const audioTrack = mediaStream.getAudioTracks()[0];
-            
-            // Send media data via WebSocket (simulation, in reality, you'd use a proper video streaming protocol)
+
             setInterval(() => {
                 if (videoTrack.readyState === 'live') {
-                    // Dummy data to simulate video bytes
                     const videoBytes = new Uint8Array([Math.random() * 255]);
                     websocket.send(videoBytes);
+                    localVideo.srcObject.getTracks().forEach(track => {
+                        if (track.kind === 'video') {
+                            track.enabled = true;
+                        }
+                    });
                 }
                 if (audioTrack.readyState === 'live') {
-                    // Dummy data to simulate audio bytes
                     const audioBytes = new Uint8Array([Math.random() * 255]);
                     websocket.send(audioBytes);
+                    localVideo.srcObject.getTracks().forEach(track => {
+                        if (track.kind === 'audio') {
+                            track.enabled = true;
+                        }
+                    });
                 }
+
+                // Simulate receiving video data
+                remoteVideo.srcObject.getTracks().forEach(track => {
+                    if (track.kind === 'video') {
+                        track.enabled = true;
+                    }
+                });
+                remoteVideo.srcObject.getTracks().forEach(track => {
+                    if (track.kind === 'audio') {
+                        track.enabled = true;
+                    }
+                });
             }, 100);
         }
 
-        function addVideoCallControls() {
-            const videoContainer = document.getElementById('videoContainer');
+        function addCallControls() {
             const controlsContainer = document.createElement('div');
-            controlsContainer.classList.add('absolute', 'bottom-4', 'left-4', 'flex', 'space-x-4');
+            controlsContainer.classList.add('absolute', 'bottom-4', 'left-1/2', '-translate-x-1/2', 'flex', 'space-x-4');
 
-            // Mute/Unmute button
             const muteButton = document.createElement('button');
             muteButton.classList.add('bg-gray-800', 'hover:bg-gray-700', 'text-white', 'px-4', 'py-2', 'rounded-lg');
             muteButton.textContent = 'Mute';
-            muteButton.onclick = () => {
-                const audioTracks = mediaStream.getAudioTracks();
-                audioTracks.forEach(track => track.enabled = !track.enabled);
-                muteButton.textContent = audioTracks[0].enabled ? 'Mute' : 'Unmute';
-            };
-            controlsContainer.appendChild(muteButton);
+            muteButton.addEventListener('click', () => {
+                // Implement mute functionality
+            });
 
-            // End Call button
             const endCallButton = document.createElement('button');
             endCallButton.classList.add('bg-red-600', 'hover:bg-red-700', 'text-white', 'px-4', 'py-2', 'rounded-lg');
             endCallButton.textContent = 'End Call';
-            endCallButton.onclick = () => {
-                if (websocket) {
-                    websocket.close();
-                }
-            };
-            controlsContainer.appendChild(endCallButton);
+            endCallButton.addEventListener('click', () => {
+                stopVideoStream();
+                websocket.close();
+                document.getElementById('videoSection').classList.add('hidden');
+                document.getElementById('step2').classList.remove('hidden');
+            });
 
-            videoContainer.appendChild(controlsContainer);
+            controlsContainer.appendChild(muteButton);
+            controlsContainer.appendChild(endCallButton);
+            document.getElementById('videoContainer').appendChild(controlsContainer);
+        }
+
+        function stopVideoStream() {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+            }
         }
     </script>
 
     <title>Video Call</title>
+    <style>
+        body {
+            background-color: #0F172A;
+            color: white;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+
+        input, button {
+            background-color: #1E293B;
+            border-color: #334155;
+        }
+
+        input:focus, button:focus {
+            outline: none;
+            border-color: #60A5FA;
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.5);
+        }
+    </style>
 </head>
 <body class="bg-gray-900 text-white font-sans">
     <div class="min-h-screen flex flex-col items-center justify-center space-y-6">
@@ -157,11 +191,9 @@
         </div>
 
         <!-- Video Section -->
-        <div id="videoSection" class="hidden">
-            <h1 class="text-3xl font-bold mb-4">Video Call in Progress</h1>
-            <div id="videoContainer" class="bg-gray-800 rounded-lg p-6 w-96 h-64 flex items-center justify-center relative">
-                <p class="text-gray-400">Streaming video...</p>
-            </div>
+        <div id="videoSection" class="hidden relative w-full max-w-4xl h-96 rounded-lg overflow-hidden grid grid-cols-2 gap-4">
+            <div id="localVideoContainer" class="bg-gray-800 rounded-lg"></div>
+            <div id="remoteVideoContainer" class="bg-gray-800 rounded-lg"></div>
         </div>
     </div>
 </body>
