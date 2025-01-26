@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        let websocket;
+        let mediaStream;
+        let localVideo, remoteVideo;
+
+        function goToStep2() {
+            const name = document.getElementById('yourName').value;
+            if (!name) {
+                alert('Please enter your name!');
+                return;
+            }
+            document.getElementById('step1').classList.add('hidden');
+            document.getElementById('step2').classList.remove('hidden');
+        }
+
+        function startCall() {
+            const from = document.getElementById('yourName').value;
+            const to = document.getElementById('toName').value;
+
+            if (!to) {
+                alert('Please enter the recipient\'s name!');
+                return;
+            }
+
+            const wsUrl = `ws://localhost:3000/ws/${from}/${to}/`;
+            websocket = new WebSocket(wsUrl);
+
+            websocket.onopen = () => {
+                document.getElementById('step2').classList.add('hidden');
+                document.getElementById('videoSection').classList.remove('hidden');
+                startVideoStream();
+            };
+
+            websocket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                alert('Failed to connect to the server.');
+            };
+
+            websocket.onclose = () => {
+                stopVideoStream();
+                document.getElementById('videoSection').classList.add('hidden');
+                document.getElementById('step2').classList.remove('hidden');
+            };
+        }
+
+        async function startVideoStream() {
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                localVideo = document.createElement('video');
+                localVideo.srcObject = mediaStream;
+                localVideo.play();
+                localVideo.classList.add('w-full', 'h-full', 'object-cover');
+
+                remoteVideo = document.createElement('video');
+                remoteVideo.classList.add('w-full', 'h-full', 'object-cover');
+
+                document.getElementById('localVideoContainer').appendChild(localVideo);
+                document.getElementById('remoteVideoContainer').appendChild(remoteVideo);
+
+                streamVideo(localVideo, remoteVideo);
+                addCallControls();
+            } catch (error) {
+                console.error('Error accessing media devices:', error);
+                alert('Could not access webcam or microphone.');
+            }
+        }
+
+        function streamVideo(localVideo, remoteVideo) {
+            if (!websocket || websocket.readyState !== WebSocket.OPEN || !mediaStream) return;
+
+            const videoTrack = mediaStream.getVideoTracks()[0];
+            const audioTrack = mediaStream.getAudioTracks()[0];
+
+            setInterval(() => {
+                if (videoTrack.readyState === 'live') {
+                    const videoBytes = new Uint8Array([Math.random() * 255]);
+                    websocket.send(videoBytes);
+                    localVideo.srcObject.getTracks().forEach(track => {
+                        if (track.kind === 'video') {
+                            track.enabled = true;
+                        }
+                    });
+                }
+                if (audioTrack.readyState === 'live') {
+                    const audioBytes = new Uint8Array([Math.random() * 255]);
+                    websocket.send(audioBytes);
+                    localVideo.srcObject.getTracks().forEach(track => {
+                        if (track.kind === 'audio') {
+                            track.enabled = true;
+                        }
+                    });
+                }
+
+                // Simulate receiving video data
+                remoteVideo.srcObject.getTracks().forEach(track => {
+                    if (track.kind === 'video') {
+                        track.enabled = true;
+                    }
+                });
+                remoteVideo.srcObject.getTracks().forEach(track => {
+                    if (track.kind === 'audio') {
+                        track.enabled = true;
+                    }
+                });
+            }, 100);
+        }
+
+        function addCallControls() {
+            const controlsContainer = document.createElement('div');
+            controlsContainer.classList.add('absolute', 'bottom-4', 'left-1/2', '-translate-x-1/2', 'flex', 'space-x-4');
+
+            const muteButton = document.createElement('button');
+            muteButton.classList.add('bg-gray-800', 'hover:bg-gray-700', 'text-white', 'px-4', 'py-2', 'rounded-lg');
+            muteButton.textContent = 'Mute';
+            muteButton.addEventListener('click', () => {
+                // Implement mute functionality
+            });
+
+            const endCallButton = document.createElement('button');
+            endCallButton.classList.add('bg-red-600', 'hover:bg-red-700', 'text-white', 'px-4', 'py-2', 'rounded-lg');
+            endCallButton.textContent = 'End Call';
+            endCallButton.addEventListener('click', () => {
+                stopVideoStream();
+                websocket.close();
+                document.getElementById('videoSection').classList.add('hidden');
+                document.getElementById('step2').classList.remove('hidden');
+            });
+
+            controlsContainer.appendChild(muteButton);
+            controlsContainer.appendChild(endCallButton);
+            document.getElementById('videoContainer').appendChild(controlsContainer);
+        }
+
+        function stopVideoStream() {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+            }
+        }
+    </script>
+
+    <title>Video Call</title>
+    <style>
+        body {
+            background-color: #0F172A;
+            color: white;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+
+        input, button {
+            background-color: #1E293B;
+            border-color: #334155;
+        }
+
+        input:focus, button:focus {
+            outline: none;
+            border-color: #60A5FA;
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans">
+    <div class="min-h-screen flex flex-col items-center justify-center space-y-6">
+        <!-- Step 1: Enter Your Name -->
+        <div id="step1" class="space-y-4">
+            <h1 class="text-3xl font-bold">Enter Your Name</h1>
+            <input id="yourName" 
+                   type="text" 
+                   placeholder="Your Name" 
+                   class="block w-80 px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <button 
+                onclick="goToStep2()" 
+                class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg font-medium transition">Start</button>
+        </div>
+
+        <!-- Step 2: Start a Call -->
+        <div id="step2" class="hidden space-y-4">
+            <h1 class="text-3xl font-bold">Start a Call</h1>
+            <input id="toName" 
+                   type="text" 
+                   placeholder="Recipient's Name" 
+                   class="block w-80 px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <button 
+                onclick="startCall()" 
+                class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg font-medium transition">Start Call</button>
+        </div>
+
+        <!-- Video Section -->
+        <div id="videoSection" class="hidden relative w-full max-w-4xl h-96 rounded-lg overflow-hidden grid grid-cols-2 gap-4">
+            <div id="localVideoContainer" class="bg-gray-800 rounded-lg"></div>
+            <div id="remoteVideoContainer" class="bg-gray-800 rounded-lg"></div>
+        </div>
+    </div>
+</body>
+</html>
