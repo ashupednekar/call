@@ -6,7 +6,7 @@ COPY . .
 
 RUN cargo build --release -j 5
 
-FROM gcr.io/distroless/cc-debian11
+FROM gcr.io/distroless/cc-debian12
 
 COPY --from=build-env --chown=10014:10014 /backend/target/release/call /backend/call
 
