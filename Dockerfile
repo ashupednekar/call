@@ -7,6 +7,7 @@ RUN tar -xvzf /tmp/nats-server-v2.10.11-linux-amd64.tar.gz -C /tmp \
 COPY . .
 
 RUN cargo build --release -j 5 
+RUN chmod +x /backend/entrypoint.sh
 
 FROM alpine 
 COPY --from=build-env --chown=10014:10014 /usr/local/bin/nats-server /usr/local/bin/nats-server
